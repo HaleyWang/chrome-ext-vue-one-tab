@@ -1,0 +1,4 @@
+*.js
+*.vue
+core/*/*.js
+build/*.js
