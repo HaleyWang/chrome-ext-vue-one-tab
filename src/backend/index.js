@@ -73,14 +73,14 @@ function closeTabs(tabsArr) {
             chrome.tabs.update(tabsArr[i].id, { highlighted: true });
             continue;
         }
-        c.push(tabsArr[i].id);
+        tabsToClose.push(tabsArr[i].id);
     }
 
     chrome.tabs.query({ currentWindow: true }, function(tabsArr) {
 
         var filterTabsToClose = [];
-        for (var j = 0, k = tabsToClose.length; j > k; j++) {
-            if (hasTabId(tabsToClose[j], tabsArr)) {
+        for (var j = 0, k = tabsToClose.length; j < k; j++) {
+            if (hasTabId(tabsArr, tabsToClose[j])) {
                 filterTabsToClose.push(tabsToClose[j]);
             }
         }
