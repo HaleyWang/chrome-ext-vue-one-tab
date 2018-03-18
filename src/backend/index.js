@@ -6,6 +6,7 @@ import ElementUI from 'element-ui';
 import 'element-ui/lib/theme-chalk/index.css';
 
 import root from './root.vue'
+import { formatDate } from '../common/date.js';
 
 
 Vue.use(ElementUI);
@@ -19,7 +20,8 @@ new Vue({
 })
 
 
-chrome.storage.sync.get(function(storage) {
+
+chrome.storage.local.get(function(storage) {
 
     var tabs = {}, // to-be module
         tabGroups = storage.tabGroups || []; // tab groups
@@ -31,7 +33,7 @@ chrome.storage.sync.get(function(storage) {
 // from the array of Tab objects it makes an object with date and the array
 function makeTabGroup(tabsArr) {
     var tabGroup = {
-        date: new Date(),
+        date: formatDate(new Date(), 'yyyy-MM-dd hh:mm:ss'),
         id: Date.now() // clever way to quickly get a unique ID
     };
 
@@ -47,16 +49,16 @@ function filterTabGroup(tabGroup) {
 
 // saves array (of Tab objects) to localStorage
 function saveTabGroup(tabGroup) {
-    chrome.storage.sync.get('tabGroups', function(storage) {
+    chrome.storage.local.get('tabGroups', function(storage) {
         var newArr;
 
         if (storage.tabGroups) {
             newArr = storage.tabGroups;
             newArr.push(tabGroup);
 
-            chrome.storage.sync.set({ tabGroups: newArr });
+            chrome.storage.local.set({ tabGroups: newArr });
         } else {
-            chrome.storage.sync.set({ tabGroups: [tabGroup] });
+            chrome.storage.local.set({ tabGroups: [tabGroup] });
         }
     });
 }
@@ -67,14 +69,53 @@ function closeTabs(tabsArr) {
         i;
 
     for (i = 0; i < tabsArr.length; i += 1) {
-        tabsToClose.push(tabsArr[i].id);
+        if (tabsArr[i].active) {
+            chrome.tabs.update(tabsArr[i].id, { highlighted: true });
+            continue;
+        }
+        c.push(tabsArr[i].id);
     }
 
-    chrome.tabs.remove(tabsToClose, function() {
-        if (chrome.runtime.lastError) {
-            console.error(chrome.runtime.lastError)
+    chrome.tabs.query({ currentWindow: true }, function(tabsArr) {
+
+        var filterTabsToClose = [];
+        for (var j = 0, k = tabsToClose.length; j > k; j++) {
+            if (hasTabId(tabsToClose[j], tabsArr)) {
+                filterTabsToClose.push(tabsToClose[j]);
+            }
         }
+
+
+        chrome.tabs.remove(filterTabsToClose, function() {
+            if (chrome.runtime.lastError) {
+                console.error(chrome.runtime.lastError)
+            }
+        });
     });
+
+
+}
+
+function hasTabId(tabsArr, tabId) {
+
+    for (var j = 0, k = tabsArr.length; j < k; j++) {
+        if (tabsArr[j].id == tabId) {
+            return true;
+        }
+
+    }
+    return false;
+}
+
+function hasTabUrl(tabsArr, url) {
+
+    for (var j = 0, k = tabsArr.length; j < k; j++) {
+        if (tabsArr[j].url == url) {
+            return true;
+        }
+
+    }
+    return false;
 }
 
 // makes a tab group, filters it and saves it to localStorage
@@ -86,7 +127,14 @@ function saveTabs(tabsArr) {
 }
 
 function openBackgroundPage() {
-    chrome.tabs.create({ url: chrome.extension.getURL('pages/background.html') });
+    chrome.tabs.query({ currentWindow: true }, function(tabsArr) {
+        var backgroundUrl = chrome.extension.getURL('pages/background.html');
+        if (!hasTabUrl(tabsArr, backgroundUrl)) {
+            chrome.tabs.create({ url: backgroundUrl });
+        }
+
+    });
+
 }
 
 
@@ -97,8 +145,8 @@ chrome.runtime.onMessage.addListener(function(req, sender, sendRes) {
     switch (req.action) {
         case 'save':
             saveTabs(req.tabsArr);
-            //openBackgroundPage(); // opening now so window doesn't close
-            //closeTabs(req.tabsArr);
+            openBackgroundPage(); // opening now so window doesn't close
+            closeTabs(req.tabsArr);
             sendRes('ok'); // acknowledge
             break;
         case 'openbackgroundpage':

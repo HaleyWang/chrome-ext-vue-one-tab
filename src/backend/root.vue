@@ -1,8 +1,11 @@
 <template >
 
   <div>
-    div tab gg {{aa}}
-    <el-progress :percentage="70"></el-progress>
+    
+    <h1 id="tu-biao-fen-ge-fu">
+        Vue one tab
+    
+    </h1>
 
     <el-input placeholder="输入关键字进行过滤" v-model="filterText">
     </el-input>
@@ -21,7 +24,6 @@
         </span>
 
         <span>
-          
 
           <el-button type="text" size="mini" v-show="data.group" @click="() => restoreTabGroup(data)">
             Restore group
@@ -40,6 +42,11 @@
 
 </template>
 <script>
+
+function saveTabGroups(json) {
+  chrome.storage.local.set({ tabGroups: json });
+}
+
 export default {
   data: () => ({
     aa: 11,
@@ -85,6 +92,13 @@ export default {
       const children = parent.data.tabs || parent.data;
       const index = children.findIndex(d => d.id === data.id);
       children.splice(index, 1);
+
+      saveTabGroups(this.tabGroups);
+
+      this.fetchData();
+
+
+
     },
     handleNodeClick(data) {
       console.log(data);
@@ -96,18 +110,22 @@ export default {
     fetchData() {
 
       var me = this;
-      chrome.storage.sync.get(function (storage) {
+      chrome.storage.local.get(function (storage) {
 
         var tabGroups = storage.tabGroups || []; // tab groups
 
         for (let i = 0, n = tabGroups.length; i < n; i++) {
           let tabGroup = tabGroups[i];
-          tabGroup.label = tabGroup.tabs.length + ' Tabs ' + new Date(tabGroup.id);
-          let tabs = tabGroup.tabs;
-          tabGroup.group = true;
-          for (let j = 0, k = tabs.length; j < k; j++) {
-            let tab = tabs[j];
-            tab.label = tab.title;
+          if (tabGroup && tabGroup.tabs) {
+
+
+            tabGroup.label = tabGroup.tabs.length + ' Tabs ' + tabGroup.date;
+            let tabs = tabGroup.tabs;
+            tabGroup.group = true;
+            for (let j = 0, k = tabs.length; j < k; j++) {
+              let tab = tabs[j];
+              tab.label = tab.title;
+            }
           }
         }
 
