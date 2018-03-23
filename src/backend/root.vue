@@ -10,9 +10,12 @@
     <el-input placeholder="输入关键字进行过滤" v-model="filterText">
     </el-input>
 
-    <el-tree ref="tree2" :expand-on-click-node="false" default-expand-all :filter-node-method="filterNode" :data="tabGroups" :props="defaultProps" @node-click="handleNodeClick">
+    <el-tree class="tabs-tree" ref="tree2" :expand-on-click-node="false" default-expand-all :filter-node-method="filterNode" :data="tabGroups" :props="defaultProps" @node-click="handleNodeClick">
 
       <span class="custom-tree-node" slot-scope="{ node, data }">
+        
+        
+        
         <span v-show="data.group">{{ node.label }}</span>
 
         <span v-show="!data.group">
@@ -30,10 +33,15 @@
 
           </el-button>
 
+         
+
+
           <el-button type="text" size="mini" @click="() => remove(node, data)">
             Delete
           </el-button>
         </span>
+
+        
       </span>
 
     </el-tree>
@@ -58,7 +66,12 @@ export default {
     },
     tabGroups: []
   }),
-  computed: {},
+  computed: {
+
+
+
+
+  },
   created() {
     this.fetchData();
 
@@ -68,7 +81,29 @@ export default {
       this.$refs.tree2.filter(val);
     }
   },
-  mounted() { },
+  mounted() { 
+
+var me = this;
+
+chrome.runtime.onMessage.addListener(function(req, sender, sendRes) {
+    console.log("&&&&&&&---00000", req.action);
+
+
+    switch (req.action) {
+        case 'oneTabSaveDone':
+            
+           console.log("&&&&&&&---111");
+           me.fetchData();
+     
+            sendRes('ok'); // acknowledge
+            break;
+        default:
+            sendRes('nope'); // acknowledge
+            break;
+    }
+});
+
+  },
   methods: {
 
     restoreTabGroup(group) {
@@ -150,5 +185,24 @@ export default {
 <style lang="scss">
 div {
   color: blue;
+}
+.fr {
+float: right;
+}
+
+.tabs-tree {
+  .custom-tree-node {
+    display: flex;
+        -ms-flex: 1;
+    flex: 1;
+    display: -ms-flexbox;
+    display: flex;
+    -ms-flex-align: center;
+    align-items: center;
+    -ms-flex-pack: justify;
+    justify-content: space-between;
+    font-size: 14px;
+    padding-right: 8px;
+  }
 }
 </style>

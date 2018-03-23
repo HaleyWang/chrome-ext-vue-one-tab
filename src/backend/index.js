@@ -1,6 +1,7 @@
 console.log('background !')
 
 import Vue from 'vue'
+import lodash from 'lodash'
 
 import ElementUI from 'element-ui';
 import 'element-ui/lib/theme-chalk/index.css';
@@ -14,7 +15,7 @@ Vue.use(ElementUI);
 
 Vue.config.productionTip = false
     /* eslint-disable no-new */
-new Vue({
+var backgroundView = new Vue({
     el: '#root',
     render: h => h(root)
 })
@@ -30,14 +31,21 @@ chrome.storage.local.get(function(storage) {
 
 });
 
+//console.log('--->', lodash)
+
+
 // from the array of Tab objects it makes an object with date and the array
 function makeTabGroup(tabsArr) {
     var tabGroup = {
         date: formatDate(new Date(), 'yyyy-MM-dd hh:mm:ss'),
         id: Date.now() // clever way to quickly get a unique ID
     };
+    var backgroundUrl = chrome.extension.getURL('pages/background.html');
 
-    tabGroup.tabs = tabsArr;
+    tabGroup.tabs = lodash.filter(tabsArr, function(tab) {
+        return backgroundUrl != tab.url && !tab.active;
+    });
+
 
     return tabGroup;
 }
@@ -68,9 +76,14 @@ function closeTabs(tabsArr) {
     var tabsToClose = [],
         i;
 
+    var backgroundUrl = chrome.extension.getURL('pages/background.html');
+
     for (i = 0; i < tabsArr.length; i += 1) {
         if (tabsArr[i].active) {
             chrome.tabs.update(tabsArr[i].id, { highlighted: true });
+            continue;
+        }
+        if (tabsArr[i].url === backgroundUrl) {
             continue;
         }
         tabsToClose.push(tabsArr[i].id);
@@ -123,7 +136,10 @@ function saveTabs(tabsArr) {
     var tabGroup = makeTabGroup(tabsArr),
         cleanTabGroup = filterTabGroup(tabGroup);
 
-    saveTabGroup(cleanTabGroup);
+    if (cleanTabGroup.tabs && cleanTabGroup.tabs.length > 0) {
+        saveTabGroup(cleanTabGroup);
+
+    }
 }
 
 function openBackgroundPage() {
@@ -139,7 +155,7 @@ function openBackgroundPage() {
 
 
 chrome.runtime.onMessage.addListener(function(req, sender, sendRes) {
-    console.log("&&&&&&&---");
+    console.log("&&&&&&&---", req.action);
 
 
     switch (req.action) {
@@ -148,6 +164,10 @@ chrome.runtime.onMessage.addListener(function(req, sender, sendRes) {
             openBackgroundPage(); // opening now so window doesn't close
             closeTabs(req.tabsArr);
             sendRes('ok'); // acknowledge
+            chrome.runtime.sendMessage({ action: 'oneTabSaveDone' }, function(res) {
+
+            });
+
             break;
         case 'openbackgroundpage':
             openBackgroundPage();
